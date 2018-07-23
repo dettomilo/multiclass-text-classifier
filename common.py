@@ -1,3 +1,4 @@
+from _csv import QUOTE_ALL, QUOTE_NONNUMERIC
 from os import path, makedirs, rename, remove
 from time import time
 import argparse
@@ -145,6 +146,32 @@ Data processing
 """
 
 
+def mix_classes_data(data_directory, train_percentage=80):
+    good_filename = path.join(data_directory, 'corpus_good.csv')
+    bad_filename = path.join(data_directory, 'corpus_bad.csv')
+    train_filename = path.join(data_directory, 'train.csv')
+    test_filename = path.join(data_directory, 'test.csv')
+
+    corpus_good_raw = pd.read_csv(good_filename, encoding="utf-8", escapechar='\\', doublequote=False)
+    corpus_bad_raw = pd.read_csv(bad_filename, encoding="utf-8", escapechar='\\', doublequote=False)
+
+    corpus_good_raw['id'] = corpus_good_raw['id'].astype(int)
+    corpus_bad_raw['id'] = corpus_bad_raw['id'].astype(int)
+    corpus_good_raw['status'] = corpus_good_raw['status'].astype(int)
+    corpus_bad_raw['status'] = corpus_bad_raw['status'].astype(int)
+
+    frames = [corpus_good_raw, corpus_bad_raw]
+    corpus_raw = pd.concat(frames)
+
+    split_idx = int(round(corpus_raw.shape[0] * train_percentage / 100))
+
+    train_raw = corpus_raw.iloc[:split_idx, :]
+    test_raw = corpus_raw.iloc[split_idx:, :]
+
+    train_raw.to_csv(train_filename, columns=["status","id","body",], index=False)
+    test_raw.to_csv(test_filename, columns=["status","id","body"], index=False)
+
+
 def get_data(data_directory, classes_only=False):
     """Download the DBpedia data if necessary, and load data from the data_directory. If the files train.csv, test.csv
        and classes.txt are all in data_directory, then they are used (no download)."""
@@ -176,10 +203,13 @@ def get_data(data_directory, classes_only=False):
     classes = pd.read_csv(classes_filename, header=None, names=['class'])
     if classes_only:
         return classes
-    train_raw = pd.read_csv(train_filename, header=None)
-    test_raw = pd.read_csv(test_filename, header=None)
-    longest_sent = max([len(sent) for sent in tf.contrib.learn.preprocessing.tokenizer(train_raw[2])])
-    print("The longest sentence in the training data has {} words.".format(longest_sent))
+    train_raw = pd.read_csv(train_filename, header=None, quoting=QUOTE_NONNUMERIC, encoding="utf-8")
+    test_raw = pd.read_csv(test_filename, header=None, quoting=QUOTE_NONNUMERIC, encoding="utf-8")
+
+    print(train_raw)
+
+#    longest_sent = max([len(sent) for sent in tf.contrib.learn.preprocessing.tokenizer(train_raw[2])])
+#    print("The longest sentence in the training data has {} words.".format(longest_sent))
 
     return train_raw, test_raw, classes
 
@@ -187,9 +217,10 @@ def get_data(data_directory, classes_only=False):
 def extract_data(train_raw, test_raw):
     """Extract the document and class from each entry in the data."""
     x_train = train_raw[2]
-    y_train = train_raw[0] - 1  # Start enumeration at 0 instead of 1
+    y_train = int(train_raw[0]) - 1  # Start enumeration at 0 instead of 1
     x_test = test_raw[2]
-    y_test = test_raw[0] - 1
+    y_test = int(test_raw[0]) - 1
+
     print('Size of training set: {0}'.format(len(x_train)))
     print('Size of test set: {0}'.format(len(x_test)))
     return x_train, np.array(y_train), x_test, np.array(y_test)
@@ -262,6 +293,9 @@ def preprocess_data(flags, sequence_lengths=False):
             train_raw, x_train, y_train, x_test, y_test, \
                 train_lengths, test_lengths, classes = pickle.load(f)
     else:
+
+        mix_classes_data(flags.data_dir)
+
         # Get the raw data, downloading it if necessary.
         train_raw, test_raw, classes = get_data(flags.data_dir)
 
