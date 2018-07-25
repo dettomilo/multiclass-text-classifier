@@ -168,8 +168,8 @@ def mix_classes_data(data_directory, train_percentage=80):
     train_raw = corpus_raw.iloc[:split_idx, :]
     test_raw = corpus_raw.iloc[split_idx:, :]
 
-    train_raw.to_csv(train_filename, columns=["status","id","body",], index=False)
-    test_raw.to_csv(test_filename, columns=["status","id","body"], index=False)
+    train_raw.to_csv(train_filename, columns=["status", "id", "body"], index=False)
+    test_raw.to_csv(test_filename, columns=["status", "id", "body"], index=False)
 
 
 def get_data(data_directory, classes_only=False):
@@ -203,23 +203,23 @@ def get_data(data_directory, classes_only=False):
     classes = pd.read_csv(classes_filename, header=None, names=['class'])
     if classes_only:
         return classes
-    train_raw = pd.read_csv(train_filename, header=None, quoting=QUOTE_NONNUMERIC, encoding="utf-8")
-    test_raw = pd.read_csv(test_filename, header=None, quoting=QUOTE_NONNUMERIC, encoding="utf-8")
+    train_raw = pd.read_csv(train_filename, header=0, quoting=QUOTE_NONNUMERIC, encoding="utf-8-sig")
+    test_raw = pd.read_csv(test_filename, header=0, quoting=QUOTE_NONNUMERIC, encoding="utf-8-sig")
 
     print(train_raw)
 
-#    longest_sent = max([len(sent) for sent in tf.contrib.learn.preprocessing.tokenizer(train_raw[2])])
-#    print("The longest sentence in the training data has {} words.".format(longest_sent))
+    #longest_sent = max([len(sent) for sent in tf.contrib.learn.preprocessing.tokenizer(train_raw[2])])
+    #print("The longest sentence in the training data has {} words.".format(longest_sent))
 
     return train_raw, test_raw, classes
 
 
 def extract_data(train_raw, test_raw):
     """Extract the document and class from each entry in the data."""
-    x_train = train_raw[2]
-    y_train = int(train_raw[0]) - 1  # Start enumeration at 0 instead of 1
-    x_test = test_raw[2]
-    y_test = int(test_raw[0]) - 1
+    x_train = train_raw.iloc[2]
+    y_train = int(train_raw.iloc[0]) - 1  # Start enumeration at 0 instead of 1
+    x_test = test_raw.iloc[2]
+    y_test = test_raw.iloc[0] - 1
 
     print('Size of training set: {0}'.format(len(x_train)))
     print('Size of test set: {0}'.format(len(x_test)))
@@ -463,4 +463,3 @@ def estimator_spec_for_softmax_classification(logits, labels, mode, params):
         'accuracy': tf.metrics.accuracy(labels=labels, predictions=predicted_class)
     }
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
-
